@@ -6,35 +6,70 @@
 
 ## 新建网关
 
-准备 JDK 21、Maven 3.9 和已登录的 Codex CLI。用将要运行服务的系统用户执行 `codex login status`，必要时执行 `codex login`。在仓库根目录运行 `mvn -B verify`。
+准备 Java 21 和已登录的 Codex CLI。用将要运行服务的系统用户执行 `codex login status`，必要时执行 `codex login`。如果 Codex 不在 `PATH` 上，可以把 `GATEWAY_CODEX` 设为其可执行文件的绝对路径。
 
-### Windows
+从 [GitHub Actions](https://github.com/kangxls-ai/gptchat/actions) 的成功构建下载 `MyAI-server-standalone` 并完整解压。目录里包含 `myai-server.jar`、各平台脚本和这份说明。如果从源码构建，在仓库根目录执行 `mvn -B -pl server -am package`，JAR 位于 `server/target/myai-server.jar`，脚本位于 `scripts/`。
 
-在仓库根目录打开 PowerShell，启动网关。
+### 直接用 JAR 启动
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Start-Gateway.ps1 -BindAddress 127.0.0.1 -Port 4000
+Windows、macOS 和 Linux 都可以在 JAR 所在目录执行：
+
+```sh
+java -jar myai-server.jar
 ```
 
-保持服务窗口打开，在另一个 PowerShell 窗口中读取配对密码。
+默认监听 `127.0.0.1:4000`，状态写到当前目录下的 `gateway-state/`。首次启动会生成证书和配对密钥。可通过参数指定地址、端口和状态目录：
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Show-Pairing.ps1
+```sh
+java -jar myai-server.jar --bind 127.0.0.1 --port 4000 --state-dir "./gateway-state"
+java -jar myai-server.jar --help
 ```
 
-两个脚本都支持 `-DataDirectory`。使用同一个目录来访问同一组证书、配对密钥和历史记录。
+也可以用环境变量 `MYAI_STATE_DIR` 指定状态目录。已有的 `java -jar myai-server.jar 地址 端口` 形式仍可使用。
 
-### macOS
+### 用平台脚本启动和导出密码
 
-可直接连接 Windows 上的网关。需要在 Mac 上独立运行网关时，可从仓库根目录运行以下命令。
+以下命令在解压后的独立部署包目录运行。如果直接使用源码仓库，在命令的脚本路径前加 `scripts/`。
+
+**Windows PowerShell**
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Start-Gateway.ps1
+```
+
+看到 `Listening` 后，在另一个 PowerShell 窗口运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Export-Pairing.ps1
+```
+
+可通过 `-BindAddress`、`-Port` 和 `-StateDirectory` 自定义启动。导出时用相同的 `-StateDirectory`。原有 `-DataDirectory` 接受的是状态目录的上一级。
+
+**macOS**
 
 ```bash
-bash scripts/start-gateway.sh 127.0.0.1 4000
-# 在另一个终端窗口中读取配对密码
-bash scripts/show-pairing.sh
+bash start-macos.sh
+# 看到 Listening 后，在另一个终端窗口运行
+bash export-pairing.sh
 ```
 
-两个脚本都支持环境变量 `MYAI_DATA_DIR`。macOS 上生成 PDF 时，在启动前设置 `MYAI_PDF_FONT`，指向包含所需字形的 TrueType `.ttf`。使用 `.ttc` 时，同时设置 `MYAI_PDF_FONT_FACE` 为字体的 PostScript 名称。Windows 默认使用 Microsoft YaHei。网关在 Mac 上运行需要该电脑自己的 Codex CLI 登录。
+**Linux**
+
+```bash
+bash start-linux.sh
+# 看到 Listening 后，在另一个终端窗口运行
+bash export-pairing.sh
+```
+
+macOS 和 Linux 启动脚本接受 JAR 的同一组参数。使用自定义状态目录时，可以设置 `MYAI_STATE_DIR`，或者运行 `bash export-pairing.sh "/路径/gateway-state"`。原有 `MYAI_DATA_DIR` 仍指向状态目录的上一级。
+
+导出脚本把客户端可直接粘贴的完整密码写到**脚本同目录的 `pairing.txt`**，并仅显示保存路径。Windows 使用当前用户专属的文件访问控制列表，macOS 和 Linux 使用 `600` 权限。重新导出会替换该文件。把解压目录放在用户私有位置，并将导出文件与历史、证书一起留在本机。源码仓库会忽略这个文件。
+
+独立部署包内的启动脚本默认使用包目录下的 `gateway-state/`。源码仓库中的启动脚本默认使用 `server-data/gateway-state/`。如果原生 JAR 从其他目录启动，导出时应指定它启动日志中显示的状态目录。旧的 `Show-Pairing.ps1` 和 `show-pairing.sh` 可用于显式在终端显示密码。
+
+### PDF 字体
+
+macOS 和 Linux 上生成 PDF 时，在启动前设置 `MYAI_PDF_FONT`，指向包含所需字形的 TrueType `.ttf`。使用 `.ttc` 时，同时设置 `MYAI_PDF_FONT_FACE` 为字体的 PostScript 名称。Windows 默认使用 Microsoft YaHei。
 
 ### 跨网络访问
 
@@ -63,7 +98,7 @@ APK 在 `android/app/build/outputs/apk/debug/`。公开 CI 使用调试签名。
 
 ## 数据和升级
 
-- 默认状态目录为 `server-data/gateway-state`。网关保存证书私钥、配对密钥、任务和附件，均应存放在该系统用户的私有目录。
+- 网关把证书私钥、配对密钥、任务和附件保存在状态目录中。启动日志会显示其实际路径。
 - 升级前关闭服务并备份状态目录。新版本继续使用同一个数据目录，原证书和配对可继续使用。
-- 要撤销旧密码，停止网关并删除状态目录中的 `pairing.txt`，再启动、读取新密码并重新配对。证书和历史存于其他文件。
+- 要撤销旧密码，停止网关并删除**状态目录内**的 `pairing.txt`，然后重启服务、重新导出密码并配对。脚本同目录的 `pairing.txt` 是给客户端使用的副本。
 - 主机需保持开机联网，服务退出或电脑休眠期间设备无法访问。

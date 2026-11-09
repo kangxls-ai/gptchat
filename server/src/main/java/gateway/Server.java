@@ -93,16 +93,28 @@ public final class Server {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length < 2 || args.length > 3 || (args.length == 3 && !"--allow-remote".equals(args[2]))) {
-            throw new IllegalArgumentException("Usage: gateway.Server <bind address> <port> [--allow-remote]");
+        if (args.length == 1 && List.of("--help", "-h").contains(args[0])) {
+            System.out.println("""
+                    Usage: java -jar myai-server.jar [--bind ADDRESS] [--port PORT]
+                                                    [--state-dir DIRECTORY] [--allow-remote]
+                    Defaults: 127.0.0.1:4000 and ./gateway-state (or MYAI_STATE_DIR).
+                    Legacy syntax: java -jar myai-server.jar ADDRESS PORT [--allow-remote]
+                    """);
+            return;
         }
-        boolean allowRemote = args.length == 3;
-        InetAddress ip = InetAddress.getByName(args[0]);
-        if (!allowRemote && !ip.isSiteLocalAddress() && !ip.isLoopbackAddress()) {
+        Launch options = Launch.parse(args);
+        InetAddress ip = InetAddress.getByName(options.bind());
+        if (!options.allowRemote() && !ip.isSiteLocalAddress() && !ip.isLoopbackAddress()) {
             throw new IllegalArgumentException("Use a private Wi-Fi address or 127.0.0.1.");
         }
         String codex = System.getenv().getOrDefault("GATEWAY_CODEX", "codex");
-        Path state = Files.createDirectories(Path.of("gateway-state").toAbsolutePath());
+        Path state = options.state().toAbsolutePath().normalize();
+        if (state.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+            Files.createDirectories(state, java.nio.file.attribute.PosixFilePermissions.asFileAttribute(
+                    java.nio.file.attribute.PosixFilePermissions.fromString("rwx------")));
+        } else {
+            Files.createDirectories(state);
+        }
         try (FileChannel lockFile = FileChannel.open(state.resolve("server.lock"),
                 StandardOpenOption.CREATE, StandardOpenOption.WRITE);
              var lock = lockFile.tryLock()) {
@@ -122,15 +134,55 @@ public final class Server {
             String fingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(keys.getCertificate("gateway").getEncoded()));
             Files.writeString(state.resolve("fingerprint.txt"), fingerprint, StandardCharsets.UTF_8);
-            int port = Integer.parseInt(args[1]);
+            int port = options.port();
             try (SSLServerSocket listener = (SSLServerSocket) tls.getServerSocketFactory().createServerSocket()) {
                 listener.bind(new InetSocketAddress(ip, port));
-                Server server = new Server(listener, state, token, codex, allowRemote);
+                Server server = new Server(listener, state, token, codex, options.allowRemote());
                 Runtime.getRuntime().addShutdownHook(new Thread(server::shutdown));
                 System.out.println("WSS endpoint bound to " + ip.getHostAddress() + ":" + port);
-                System.out.println("Use Show-Pairing.ps1 locally to display the pairing password.");
+                System.out.println("State directory: " + state);
+                System.out.println("Use Export-Pairing.ps1 or export-pairing.sh to write the pairing password.");
                 server.run();
             }
+        }
+    }
+
+    private record Launch(String bind, int port, Path state, boolean allowRemote) {
+        static Launch parse(String[] args) {
+            String bind = "127.0.0.1";
+            String port = "4000";
+            String configuredState = System.getenv("MYAI_STATE_DIR");
+            String state = configuredState == null || configuredState.isBlank() ? "gateway-state" : configuredState;
+            boolean allowRemote = false;
+            int firstFlag = 0;
+            if (args.length > 0 && !args[0].startsWith("-")) {
+                if (args.length < 2 || args[1].startsWith("-")) {
+                    throw new IllegalArgumentException("The positional syntax requires ADDRESS and PORT.");
+                }
+                bind = args[0];
+                port = args[1];
+                firstFlag = 2;
+            }
+            for (int index = firstFlag; index < args.length; index++) {
+                String flag = args[index];
+                switch (flag) {
+                    case "--bind" -> bind = value(args, ++index, flag);
+                    case "--port" -> port = value(args, ++index, flag);
+                    case "--state-dir" -> state = value(args, ++index, flag);
+                    case "--allow-remote" -> allowRemote = true;
+                    default -> throw new IllegalArgumentException("Unknown option: " + flag + " (see --help)");
+                }
+            }
+            int number = Integer.parseInt(port);
+            if (number < 1 || number > 65535) throw new IllegalArgumentException("Port must be 1–65535.");
+            return new Launch(bind, number, Path.of(state), allowRemote);
+        }
+
+        private static String value(String[] args, int index, String flag) {
+            if (index >= args.length || args[index].isBlank() || args[index].startsWith("--")) {
+                throw new IllegalArgumentException("Missing value for " + flag);
+            }
+            return args[index];
         }
     }
 
@@ -138,8 +190,17 @@ public final class Server {
         if (Files.notExists(path)) {
             byte[] bytes = new byte[32];
             new SecureRandom().nextBytes(bytes);
-            Files.writeString(path, Base64.getUrlEncoder().withoutPadding().encodeToString(bytes),
-                    StandardOpenOption.CREATE_NEW);
+            byte[] encoded = Base64.getUrlEncoder().withoutPadding().encode(bytes);
+            var permissions = path.getFileSystem().supportedFileAttributeViews().contains("posix")
+                    ? new java.nio.file.attribute.FileAttribute<?>[]{
+                            java.nio.file.attribute.PosixFilePermissions.asFileAttribute(
+                                    java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"))}
+                    : new java.nio.file.attribute.FileAttribute<?>[0];
+            try (var channel = Files.newByteChannel(path,
+                    java.util.Set.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), permissions);
+                 var output = java.nio.channels.Channels.newOutputStream(channel)) {
+                output.write(encoded);
+            }
         }
         return Files.readString(path).trim();
     }

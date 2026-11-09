@@ -1,13 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 umask 077
-project="$(cd "$(dirname "$0")/.." && pwd)"
-address="${1:-127.0.0.1}"
-port="${2:-4000}"
-data="${MYAI_DATA_DIR:-$project/server-data}"
-jar="$project/server/target/myai-server.jar"
-test -f "$jar" || { echo 'Run mvn -B verify first.' >&2; exit 1; }
-command -v "${GATEWAY_CODEX:-codex}" >/dev/null || { echo 'Install and sign in to Codex CLI first.' >&2; exit 1; }
-mkdir -p "$data"
-cd "$data"
-exec java -jar "$jar" "$address" "$port"
+source "$(dirname "$0")/gateway-paths.sh"
+test -f "$myai_jar" || { echo 'Place myai-server.jar next to this script or run mvn -B verify.' >&2; exit 1; }
+export MYAI_STATE_DIR="$(myai_state_dir)"
+exec java -jar "$myai_jar" "$@"

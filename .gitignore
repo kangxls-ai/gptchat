@@ -13,5 +13,8 @@
 **/.env*
 dist/
 server-data/
+**/pairing.txt
+**/.myai-pairing-*
+**/.myai-pairing.*
 .DS_Store
 Thumbs.db

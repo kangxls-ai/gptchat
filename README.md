@@ -28,6 +28,8 @@ mvn -B verify
 
 产物位于 `server/target/myai-server.jar` 和 `desktop/target/myai-desktop.jar`。使用已有服务时，直接在桌面客户端设置中填写现有公网端点和配对密码。
 
+网关可直接用 `java -jar myai-server.jar` 启动，默认监听 `127.0.0.1:4000`。Actions 中的 `MyAI-server-standalone` 还包含 Windows、macOS 和 Linux 启动脚本，以及将配对密码写到脚本旁 `pairing.txt` 的导出脚本。
+
 - [部署与构建说明](docs/DEPLOYMENT.md)
 - [客户端使用说明](docs/USAGE.md)
 - [WebSocket 协议与数据边界](docs/PROTOCOL.md)

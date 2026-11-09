@@ -1,9 +1,11 @@
 param(
     [switch]$Copy,
-    [string]$DataDirectory = (Join-Path (Split-Path -Parent $PSScriptRoot) 'server-data')
+    [string]$DataDirectory,
+    [string]$StateDirectory
 )
 $ErrorActionPreference = 'Stop'
-$state = Join-Path $DataDirectory 'gateway-state'
+. (Join-Path $PSScriptRoot 'Gateway-Paths.ps1')
+$state = Get-MyAIStatePath -StateDirectory $StateDirectory -DataDirectory $DataDirectory
 $fingerprint = (Get-Content -Raw -LiteralPath (Join-Path $state 'fingerprint.txt')).Trim()
 $secret = (Get-Content -Raw -LiteralPath (Join-Path $state 'pairing.txt')).Trim()
 if ($fingerprint -notmatch '^[0-9a-f]{64}$' -or $secret -notmatch '^[A-Za-z0-9_-]{43}$') {
