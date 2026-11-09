@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 project="$(cd "$(dirname "$0")/.." && pwd)"
-version="${1:-0.4.0}"
+# jpackage requires the first macOS bundle-version component to be positive.
+version="${1:-1.4.0}"
 jar="$project/desktop/target/myai-desktop.jar"
 work="$project/desktop/target/jpackage"
 dest="$project/dist/macos"
