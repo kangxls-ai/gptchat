@@ -18,7 +18,7 @@ jobs:
         include:
           - runner: windows-2025
             platform: windows-x64
-          - runner: macos-15
+          - runner: macos-15-intel
             platform: macos-arm64
           - runner: macos-15-intel
             platform: macos-x64
@@ -43,11 +43,14 @@ jobs:
           $process = Start-Process -FilePath $exe -ArgumentList @('--smoke-test', ('"{0}"' -f $marker)) -WindowStyle Hidden -PassThru
           if (-not $process.WaitForExit(20000)) { $process | Stop-Process; throw 'Desktop startup timed out.' }
           if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $marker)) { throw 'Desktop startup failed.' }
-      - name: Package macOS disk image
-        if: runner.os == 'macOS'
+      - name: Package macOS Intel disk image
+        if: matrix.platform == 'macos-x64'
         run: |
           bash scripts/package-macos.sh
           hdiutil verify dist/macos/*.dmg
+      - name: Package macOS Apple Silicon disk image
+        if: matrix.platform == 'macos-arm64'
+        run: bash scripts/package-macos-arm64.sh
       - name: Upload Windows desktop
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4

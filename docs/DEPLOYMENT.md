@@ -49,7 +49,7 @@ bash scripts/show-pairing.sh
 | Windows | `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\package-windows.ps1` | `dist/windows/MyAI/`，包含 EXE 和 Java 运行环境 |
 | macOS | `bash scripts/package-macos.sh` | `dist/macos/*.dmg`，架构取决于构建 JDK |
 
-GitHub Actions 分别在 Windows x64、macOS ARM64 和 macOS Intel 构建。到成功运行的 **Artifacts** 下载对应平台文件。Windows 应完整保留 EXE 所在目录。项目版本为 0.4.0，macOS 打包要求版本首位大于零，所以 DMG 使用包版本 1.4.0。用于正式分发的 macOS 包需要开发者自己的 Developer ID 证书和 Apple 公证。
+GitHub Actions 生成 Windows x64、macOS ARM64 和 macOS Intel 三种桌面包。CI 的 ARM64 包通过 `bash scripts/package-macos-arm64.sh` 构建，脚本使用 macOS 的 Xcode 命令行工具生成 ARM64 启动器，并校验内置 Temurin ARM64 运行时的 SHA-256 和可执行文件架构。到成功运行的 **Artifacts** 下载对应平台文件。Windows 应完整保留 EXE 所在目录。项目版本为 0.4.0，macOS 打包要求版本首位大于零，所以 DMG 使用包版本 1.4.0。用于正式分发的 macOS 包需要开发者自己的 Developer ID 证书和 Apple 公证。
 
 ## Android 构建
 
