@@ -1,0 +1,16 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <parent><groupId>ai.myai</groupId><artifactId>gptchat</artifactId><version>0.4.0</version></parent>
+  <artifactId>myai-server</artifactId>
+  <properties><app.mainClass>gateway.Server</app.mainClass></properties>
+  <dependencies>
+    <dependency><groupId>org.java-websocket</groupId><artifactId>Java-WebSocket</artifactId></dependency>
+    <dependency><groupId>com.google.code.gson</groupId><artifactId>gson</artifactId></dependency>
+    <dependency><groupId>org.slf4j</groupId><artifactId>slf4j-simple</artifactId><scope>runtime</scope></dependency>
+    <dependency><groupId>org.apache.pdfbox</groupId><artifactId>pdfbox</artifactId><version>3.0.8</version></dependency>
+  </dependencies>
+  <build>
+    <finalName>myai-server</finalName>
+    <plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-shade-plugin</artifactId></plugin></plugins>
+  </build>
+</project>

@@ -1,0 +1,17 @@
+**/target/
+**/build/
+**/.gradle/
+**/.idea/
+**/local.properties
+**/gateway-state/
+**/*.p12
+**/*.jks
+**/*.keystore
+**/*.apk
+**/*.log
+**/*.pid
+**/.env*
+dist/
+server-data/
+.DS_Store
+Thumbs.db

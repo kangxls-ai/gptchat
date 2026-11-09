@@ -1,0 +1,5 @@
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/myai_icon_background" />
+    <foreground android:drawable="@drawable/myai_mark" />
+    <monochrome android:drawable="@drawable/myai_mark" />
+</adaptive-icon>
