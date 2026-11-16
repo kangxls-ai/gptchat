@@ -29,6 +29,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -777,7 +778,7 @@ public final class MainActivity extends Activity {
         LinearLayout group = column();
         group.setPadding(dp(13), dp(9), dp(13), dp(9));
         if (user) group.setBackground(round(0xffe3eee7, 18));
-        LinearLayout.LayoutParams frame = new LinearLayout.LayoutParams(-2, -2);
+        LinearLayout.LayoutParams frame = new LinearLayout.LayoutParams(user ? -2 : -1, -2);
         frame.gravity = user ? Gravity.END : Gravity.START;
         frame.setMargins(user ? dp(34) : 0, dp(4), user ? 0 : dp(18), dp(8));
         thread.addView(group, frame);
@@ -786,12 +787,7 @@ public final class MainActivity extends Activity {
             who.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             group.addView(who);
         }
-        if (!text.isEmpty()) {
-            TextView body = label(text, 16, INK);
-            body.setTextIsSelectable(true);
-            body.setLineSpacing(dp(3), 1);
-            group.addView(body);
-        }
+        if (!text.isEmpty()) showMessageBody(group, text, user);
         if (attachment == null) return;
         String id = task.optString("id");
         String key = id + "-" + side;
@@ -814,6 +810,68 @@ public final class MainActivity extends Activity {
             // Lazy load on tap so long chat histories do not queue dozens of large downloads.
             TextView preview = action("查看图片", GREEN, () -> requestAttachment(id, side, false));
             group.addView(preview);
+        }
+    }
+
+    private void showMessageBody(LinearLayout group, String text, boolean user) {
+        List<MarkdownTables.Block> blocks = user
+                ? java.util.Collections.singletonList(new MarkdownTables.Text(text)) : MarkdownTables.parse(text);
+        for (MarkdownTables.Block block : blocks) {
+            if (block instanceof MarkdownTables.Table) {
+                showTable(group, (MarkdownTables.Table) block);
+            } else {
+                TextView body = label(((MarkdownTables.Text) block).value, 16, INK);
+                body.setTextIsSelectable(true);
+                body.setLineSpacing(dp(3), 1);
+                group.addView(body);
+            }
+        }
+    }
+
+    private void showTable(LinearLayout group, MarkdownTables.Table table) {
+        HorizontalScrollView scroll = new HorizontalScrollView(this);
+        scroll.setContentDescription("表格，可左右滑动");
+        scroll.setScrollbarFadingEnabled(false);
+        LinearLayout.LayoutParams frame = new LinearLayout.LayoutParams(-1, -2);
+        frame.setMargins(0, dp(8), 0, dp(8));
+        group.addView(scroll, frame);
+
+        LinearLayout grid = column();
+        grid.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        grid.setBackgroundColor(0xffd9e4df);
+        grid.setPadding(dp(1), dp(1), 0, 0);
+        scroll.addView(grid, new FrameLayout.LayoutParams(-2, -2));
+        int[] widths = new int[table.alignments.size()];
+        TextView measure = label("", 14, INK);
+        for (int row = 0; row < table.rows.size(); row++) {
+            measure.setTypeface(Typeface.DEFAULT, row == 0 ? Typeface.BOLD : Typeface.NORMAL);
+            for (int col = 0; col < widths.length; col++) {
+                int preferred = (int) Math.ceil(measure.getPaint().measureText(table.rows.get(row).get(col))) + dp(22);
+                widths[col] = Math.max(widths[col], Math.min(dp(230), Math.max(dp(84), preferred)));
+            }
+        }
+        for (int row = 0; row < table.rows.size(); row++) {
+            LinearLayout line = row();
+            line.setBaselineAligned(false);
+            grid.addView(line, new LinearLayout.LayoutParams(-2, -2));
+            for (int col = 0; col < widths.length; col++) {
+                TextView cell = label(table.rows.get(row).get(col), 14, INK);
+                boolean header = row == 0;
+                int alignment = Gravity.LEFT;
+                if (table.alignments.get(col) == MarkdownTables.Alignment.CENTER) alignment = Gravity.CENTER_HORIZONTAL;
+                else if (table.alignments.get(col) == MarkdownTables.Alignment.RIGHT) alignment = Gravity.RIGHT;
+                cell.setGravity(alignment | Gravity.CENTER_VERTICAL);
+                cell.setPadding(dp(10), dp(8), dp(10), dp(8));
+                cell.setTextIsSelectable(true);
+                cell.setBackgroundColor(header ? 0xffe3eee7 : row % 2 == 0 ? 0xfff4f7f5 : Color.WHITE);
+                if (header) {
+                    cell.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                    if (android.os.Build.VERSION.SDK_INT >= 28) cell.setAccessibilityHeading(true);
+                }
+                LinearLayout.LayoutParams size = new LinearLayout.LayoutParams(widths[col], -1);
+                size.setMargins(0, 0, dp(1), dp(1));
+                line.addView(cell, size);
+            }
         }
     }
 
