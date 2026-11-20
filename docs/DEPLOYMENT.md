@@ -6,7 +6,7 @@
 
 ## 新建网关
 
-准备 Java 21 和已登录的 Codex CLI。用将要运行服务的系统用户执行 `codex login status`，必要时执行 `codex login`。如果 Codex 不在 `PATH` 上，可以把 `GATEWAY_CODEX` 设为其可执行文件的绝对路径。
+准备 Java 21 和已登录的 Codex CLI。Windows 启动脚本会依次使用显式设置的 `GATEWAY_CODEX`、PATH 中的 `codex.exe`、当前用户的 Codex 商店应用和旧版桌面应用附带的 CLI。用运行服务的系统用户检查 CLI 登录状态。需要手动指定时，把 `GATEWAY_CODEX` 设为 `codex.exe` 的完整路径。
 
 从 [GitHub Actions](https://github.com/kangxls-ai/gptchat/actions) 的成功构建下载 `MyAI-server-standalone` 并完整解压。目录里包含 `myai-server.jar`、各平台脚本和这份说明。如果从源码构建，在仓库根目录执行 `mvn -B -pl server -am package`，JAR 位于 `server/target/myai-server.jar`，脚本位于 `scripts/`。
 

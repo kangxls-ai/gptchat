@@ -7,6 +7,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Gateway-Paths.ps1')
+. (Join-Path $PSScriptRoot 'Resolve-Codex.ps1')
 $java = (Get-Command java -CommandType Application).Source
 $jar = Get-MyAIJarPath
 if (-not (Test-Path -LiteralPath $jar -PathType Leaf)) {
@@ -15,10 +16,7 @@ if (-not (Test-Path -LiteralPath $jar -PathType Leaf)) {
 $state = Get-MyAIStatePath -StateDirectory $StateDirectory -DataDirectory $DataDirectory
 $previousCodex = $env:GATEWAY_CODEX
 try {
-    if (-not $previousCodex) {
-        $codex = Get-Command codex.exe -CommandType Application -ErrorAction SilentlyContinue
-        if ($codex) { $env:GATEWAY_CODEX = $codex.Source }
-    }
+    $env:GATEWAY_CODEX = Resolve-MyAICodex
     $serverArguments = @('--bind', $BindAddress, '--port', $Port, '--state-dir', $state)
     if ($AllowRemote) { $serverArguments += '--allow-remote' }
     & $java -jar $jar @serverArguments
